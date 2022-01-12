@@ -1,6 +1,8 @@
 package delayqueue
 
 import (
+	"context"
+
 	"github.com/vmihailenco/msgpack"
 )
 
@@ -14,18 +16,17 @@ type Job struct {
 }
 
 // 获取Job
-func getJob(key string) (*Job, error) {
-	value, err := execRedisCommand("GET", key)
+func (q *DelayRedisQueue) getJob(ctx context.Context, key string) (*Job, error) {
+	value, err := q.client.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
-	if value == nil {
+	if value == "" {
 		return nil, nil
 	}
 
-	byteValue := value.([]byte)
 	job := &Job{}
-	err = msgpack.Unmarshal(byteValue, job)
+	err = msgpack.Unmarshal([]byte(value), job)
 	if err != nil {
 		return nil, err
 	}
@@ -34,19 +35,19 @@ func getJob(key string) (*Job, error) {
 }
 
 // 添加Job
-func putJob(key string, job Job) error {
+func (q *DelayRedisQueue) putJob(ctx context.Context, key string, job Job) error {
 	value, err := msgpack.Marshal(job)
 	if err != nil {
 		return err
 	}
-	_, err = execRedisCommand("SET", key, value)
+	err = q.client.Set(ctx, key, value, 0).Err()
 
 	return err
 }
 
 // 删除Job
-func removeJob(key string) error {
-	_, err := execRedisCommand("DEL", key)
+func (q *DelayRedisQueue) removeJob(ctx context.Context, key string) error {
+	err := q.client.Del(ctx, key).Err()
 
 	return err
 }
