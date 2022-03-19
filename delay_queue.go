@@ -115,7 +115,7 @@ func (q *DelayRedisQueue) generateBucketName() <-chan string {
 	go func() {
 		i := 1
 		for {
-			c <- fmt.Sprintf(q.name, i)
+			c <- fmt.Sprint(q.name, i)
 			if i >= q.bucketCnt {
 				i = 1
 			} else {
@@ -133,17 +133,14 @@ func (q *DelayRedisQueue) initTimers(ctx context.Context) {
 	var bucketName string
 	for i := 0; i < q.bucketCnt; i++ {
 		timers[i] = time.NewTicker(1 * time.Second)
-		bucketName = fmt.Sprintf(q.name, i+1)
+		bucketName = fmt.Sprint(q.name, i+1)
 		go q.waitTicker(ctx, timers[i], bucketName)
 	}
 }
 
 func (q *DelayRedisQueue) waitTicker(ctx context.Context, timer *time.Ticker, bucketName string) {
-	for {
-		select {
-		case t := <-timer.C:
-			q.tickHandler(ctx, t, bucketName)
-		}
+	for t := range timer.C {
+		q.tickHandler(ctx, t, bucketName)
 	}
 }
 
@@ -158,12 +155,12 @@ func (q *DelayRedisQueue) tickHandler(ctx context.Context, t time.Time, bucketNa
 
 		// 集合为空
 		if bucketItem == nil {
-			return
+			continue
 		}
 
 		// 延迟时间未到
 		if bucketItem.timestamp > t.Unix() {
-			return
+			continue
 		}
 
 		// 延迟时间小于等于当前时间, 取出Job元信息并放入ready queue

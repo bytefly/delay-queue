@@ -8,7 +8,7 @@ import (
 
 // 添加JobId到队列中
 func (q *DelayRedisQueue) pushToReadyQueue(ctx context.Context, queueName string, jobId string) error {
-	queueName = fmt.Sprintf(q.name, queueName)
+	queueName = fmt.Sprint(q.name, queueName)
 
 	err := q.client.RPush(ctx, queueName, jobId).Err()
 
@@ -19,7 +19,7 @@ func (q *DelayRedisQueue) pushToReadyQueue(ctx context.Context, queueName string
 func (q *DelayRedisQueue) blockPopFromReadyQueue(ctx context.Context, queues []string, timeout int) (string, error) {
 	var args []string
 	for _, queue := range queues {
-		queue = fmt.Sprintf(q.name, queue)
+		queue = fmt.Sprint(q.name, queue)
 		args = append(args, queue)
 	}
 	values, err := q.client.BLPop(ctx, time.Duration(timeout)*time.Second, args...).Result()
@@ -30,5 +30,5 @@ func (q *DelayRedisQueue) blockPopFromReadyQueue(ctx context.Context, queues []s
 		return "", nil
 	}
 
-	return values[0], nil
+	return values[1], nil
 }

@@ -34,7 +34,7 @@ func (q *DelayRedisQueue) getFromBucket(ctx context.Context, key string) (*Bucke
 
 	item := &BucketItem{}
 	item.timestamp = int64(values[0].Score)
-	item.jobId = string(values[0].Member.([]byte))
+	item.jobId = string(values[0].Member.(string))
 
 	return item, nil
 }
