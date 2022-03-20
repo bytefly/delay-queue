@@ -10,8 +10,8 @@ import (
 type Job struct {
 	Topic string `json:"topic" msgpack:"1"`
 	Id    string `json:"id" msgpack:"2"`    // job唯一标识ID
-	Delay int64  `json:"delay" msgpack:"3"` // 延迟时间, unix时间戳
-	TTR   int64  `json:"ttr" msgpack:"4"`   // 执行超时时间
+	Delay int64  `json:"delay" msgpack:"3"` // 延迟时间, 单位为s
+	TTR   int64  `json:"ttr" msgpack:"4"`   // 执行超时时间，单位为s
 	Body  string `json:"body" msgpack:"5"`
 }
 

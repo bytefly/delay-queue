@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultQueueBlockTimeout = 178
+	DefaultQueueBlockTimeout = 10 * time.Second
 )
 
 var (
@@ -52,7 +52,8 @@ func (q *DelayRedisQueue) Push(ctx context.Context, job Job) error {
 		log.Printf("添加job到job pool失败#job-%+v#%s", job, err.Error())
 		return err
 	}
-	err = q.pushToBucket(ctx, <-q.bucketNameChan, job.Delay, job.Id)
+	delayTime := time.Now().Add(time.Duration(job.Delay) * time.Second)
+	err = q.pushToBucket(ctx, <-q.bucketNameChan, int64(delayTime.Second()), job.Id)
 	if err != nil {
 		log.Printf("添加job到bucket失败#job-%+v#%s", job, err.Error())
 		return err
