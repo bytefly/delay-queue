@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
 // 添加JobId到队列中
@@ -23,6 +25,9 @@ func (q *DelayRedisQueue) blockPopFromReadyQueue(ctx context.Context, queues []s
 		args = append(args, queue)
 	}
 	values, err := q.client.BLPop(ctx, timeout, args...).Result()
+	if err == redis.Nil {
+		return "", nil
+	}
 	if err != nil {
 		return "", err
 	}
