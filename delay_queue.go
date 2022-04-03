@@ -151,7 +151,7 @@ func (q *DelayRedisQueue) tickHandler(ctx context.Context, t time.Time, bucketNa
 		bucketItem, err := q.getFromBucket(ctx, bucketName)
 		if err != nil {
 			log.Printf("扫描bucket错误#bucket-%s#%s", bucketName, err.Error())
-			return
+			continue
 		}
 
 		// 集合为空
@@ -160,7 +160,8 @@ func (q *DelayRedisQueue) tickHandler(ctx context.Context, t time.Time, bucketNa
 		}
 
 		// 延迟时间未到
-		if bucketItem.timestamp > t.Unix() {
+		currTime := t.Unix()
+		if bucketItem.timestamp > currTime {
 			continue
 		}
 
