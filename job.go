@@ -3,6 +3,7 @@ package delayqueue
 import (
 	"context"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/vmihailenco/msgpack"
 )
 
@@ -11,18 +12,18 @@ type Job struct {
 	Topic string `json:"topic" msgpack:"1"`
 	Id    string `json:"id" msgpack:"2"`    // job唯一标识ID
 	Delay int64  `json:"delay" msgpack:"3"` // 延迟时间, 单位为s
-	TTR   int64  `json:"ttr" msgpack:"4"`   // 执行超时时间，单位为s
+	TTR   int64  `json:"ttr" msgpack:"4"`   // Time-To-Retry，失败后，多久再次重试
 	Body  string `json:"body" msgpack:"5"`
 }
 
 // 获取Job
 func (q *DelayRedisQueue) getJob(ctx context.Context, key string) (*Job, error) {
 	value, err := q.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
-	}
-	if value == "" {
-		return nil, nil
 	}
 
 	job := &Job{}
