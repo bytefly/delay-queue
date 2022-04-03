@@ -26,8 +26,8 @@ func getMiniRedisClient(t *testing.T) *redis.Client {
 	return db
 }
 
-func TestRedisQuere(t *testing.T) {
-	convey.Convey("TestRedisQuere", t, func() {
+func TestInstantMsg(t *testing.T) {
+	convey.Convey("TestInstantMsg", t, func() {
 		convey.Convey("instant msg", func() {
 			ctx := context.Background()
 			queueName := "test_instant"
@@ -45,7 +45,7 @@ func TestRedisQuere(t *testing.T) {
 					Topic: topicName,
 					Id:    id,
 					Delay: 0,
-					TTR:   1,
+					TTR:   600, // 测试期间不会重试
 					Body:  getBodyWithID(id),
 				}), convey.ShouldBeNil)
 			}
@@ -58,11 +58,15 @@ func TestRedisQuere(t *testing.T) {
 				assert.Equal(t, getBodyWithID(job.Id), job.Body)
 			}
 		})
-		convey.Convey("msg exceed TTR", func() {
+	})
+}
+func TestTTR(t *testing.T) {
+	convey.Convey("TestTTR", t, func() {
+		convey.Convey("not retry before ttr", func() {
 			ctx := context.Background()
-			queueName := "test_exceed_ttr"
+			queueName := "test_ttr"
 			topicName := "ttr"
-			ttr := int64(1)
+			ttr := int64(10) // 10秒后重试
 
 			// 初始化消息队列
 			db := getMiniRedisClient(t)
@@ -78,10 +82,26 @@ func TestRedisQuere(t *testing.T) {
 				Body:  getBodyWithID(id),
 			}), convey.ShouldBeNil)
 
-			// 2s后消息如果还能收到，则出现问题
-			time.Sleep(time.Second * time.Duration(ttr+1))
 			finishChan := make(chan struct{})
 			errChan := make(chan error)
+			// 第一次消费：不删除，保证重试
+			_, err := queue.Pop(ctx, []string{topicName})
+			assert.Nil(t, err)
+			// ttr时间内若已经重试，则说明ttr未生效
+			go func() {
+				_, err := queue.Pop(ctx, []string{topicName})
+				if err != nil {
+					errChan <- err
+				}
+				finishChan <- struct{}{}
+			}()
+			select {
+			case <-time.NewTimer(time.Second * 2).C: // 等待2秒
+			case <-finishChan:
+				assert.Fail(t, "retry before ttr")
+			}
+			// ttr后如果未收到，则说明未重试
+			time.Sleep(time.Second * time.Duration(ttr+1))
 			go func() {
 				_, err := queue.Pop(ctx, []string{topicName})
 				if err != nil {
@@ -92,18 +112,22 @@ func TestRedisQuere(t *testing.T) {
 
 			select {
 			case <-finishChan:
-				assert.Fail(t, "ttr fail")
-			case err := <-errChan:
-				assert.Nil(t, err)
+			case <-errChan:
 				assert.Fail(t, "err before ttr")
 			default:
+				assert.Fail(t, "not retry after ttr")
 			}
 		})
+	})
+}
+
+func TestDelayMsg(t *testing.T) {
+	convey.Convey("TestDelayMsg", t, func() {
 		convey.Convey("delay msg", func() {
 			ctx := context.Background()
 			queueName := "test_delay"
 			topicName := "delay"
-			delayTime := int64(2)
+			delayTime := int64(5) // 5s后消费
 
 			// 初始化消息队列
 			db := getMiniRedisClient(t)
@@ -115,7 +139,7 @@ func TestRedisQuere(t *testing.T) {
 				Topic: topicName,
 				Id:    id,
 				Delay: delayTime,
-				TTR:   int64(time.Hour),
+				TTR:   int64(time.Hour), // 测试期间不重试
 				Body:  getBodyWithID(id),
 			}), convey.ShouldBeNil)
 
@@ -136,11 +160,11 @@ func TestRedisQuere(t *testing.T) {
 			case err := <-errChan:
 				assert.Nil(t, err)
 				assert.Fail(t, "err before get delay msg")
-			default:
+			case <-time.NewTimer(time.Second * 2).C: // 等待2s
 			}
 
-			// 3s后还没收到消息，则说明delay失败
-			time.Sleep(time.Duration(delayTime+1) * time.Second)
+			// 延迟时间后还没收到消息，则说明delay失败
+			time.Sleep(time.Duration(delayTime+2) * time.Second)
 			select {
 			case <-finishChan:
 			case err := <-errChan:
