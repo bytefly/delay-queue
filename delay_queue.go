@@ -53,7 +53,8 @@ func (q *DelayRedisQueue) Push(ctx context.Context, job Job) error {
 		return err
 	}
 	delayTime := time.Now().Add(time.Duration(job.Delay) * time.Second)
-	err = q.pushToBucket(ctx, <-q.bucketNameChan, int64(delayTime.Second()), job.Id)
+	job.Delay = int64(delayTime.Second())
+	err = q.pushToBucket(ctx, <-q.bucketNameChan, job.Delay, job.Id)
 	if err != nil {
 		log.Printf("添加job到bucket失败#job-%+v#%s", job, err.Error())
 		return err
