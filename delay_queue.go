@@ -147,54 +147,52 @@ func (q *DelayRedisQueue) waitTicker(ctx context.Context, timer *time.Ticker, bu
 
 // 扫描bucket, 取出延迟时间小于当前时间的Job
 func (q *DelayRedisQueue) tickHandler(ctx context.Context, t time.Time, bucketName string) {
-	for {
-		bucketItem, err := q.getFromBucket(ctx, bucketName)
-		if err != nil {
-			log.Printf("扫描bucket错误#bucket-%s#%s", bucketName, err.Error())
-			continue
-		}
-
-		// 集合为空
-		if bucketItem == nil {
-			continue
-		}
-
-		// 延迟时间未到
-		currTime := t.Unix()
-		if bucketItem.timestamp > currTime {
-			continue
-		}
-
-		// 延迟时间小于等于当前时间, 取出Job元信息并放入ready queue
-		job, err := q.getJob(ctx, bucketItem.jobId)
-		if err != nil {
-			log.Printf("获取Job元信息失败#bucket-%s#%s", bucketName, err.Error())
-			continue
-		}
-
-		// job元信息不存在, 从bucket中删除
-		if job == nil {
-			q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
-			continue
-		}
-
-		// 再次确认元信息中delay是否小于等于当前时间
-		if job.Delay > t.Unix() {
-			// 从bucket中删除旧的jobId
-			q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
-			// 重新计算delay时间并放入bucket中
-			q.pushToBucket(ctx, <-q.bucketNameChan, job.Delay, bucketItem.jobId)
-			continue
-		}
-
-		err = q.pushToReadyQueue(ctx, job.Topic, bucketItem.jobId)
-		if err != nil {
-			log.Printf("JobId放入ready queue失败#bucket-%s#job-%+v#%s",
-				bucketName, job, err.Error())
-			continue
-		}
-
-		// 从bucket中删除
-		q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
+	bucketItem, err := q.getFromBucket(ctx, bucketName)
+	if err != nil {
+		log.Printf("扫描bucket错误#bucket-%s#%s", bucketName, err.Error())
+		return
 	}
+
+	// 集合为空
+	if bucketItem == nil {
+		return
+	}
+
+	// 延迟时间未到
+	currTime := t.Unix()
+	if bucketItem.timestamp > currTime {
+		return
+	}
+
+	// 延迟时间小于等于当前时间, 取出Job元信息并放入ready queue
+	job, err := q.getJob(ctx, bucketItem.jobId)
+	if err != nil {
+		log.Printf("获取Job元信息失败#bucket-%s#%s", bucketName, err.Error())
+		return
+	}
+
+	// job元信息不存在, 从bucket中删除
+	if job == nil {
+		q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
+		return
+	}
+
+	// 再次确认元信息中delay是否小于等于当前时间
+	if job.Delay > t.Unix() {
+		// 从bucket中删除旧的jobId
+		q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
+		// 重新计算delay时间并放入bucket中
+		q.pushToBucket(ctx, <-q.bucketNameChan, job.Delay, bucketItem.jobId)
+		return
+	}
+
+	err = q.pushToReadyQueue(ctx, job.Topic, bucketItem.jobId)
+	if err != nil {
+		log.Printf("JobId放入ready queue失败#bucket-%s#job-%+v#%s",
+			bucketName, job, err.Error())
+		return
+	}
+
+	// 从bucket中删除
+	q.removeFromBucket(ctx, bucketName, bucketItem.jobId)
 }
