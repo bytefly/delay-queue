@@ -3,7 +3,7 @@ module github.com/go-online-public/delay-queue
 go 1.16
 
 require (
-	github.com/alicebob/miniredis/v2 v2.19.1-0.20220319093145-cfc84e42acb4
+	github.com/alicebob/miniredis/v2 v2.31.0
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.7.0
