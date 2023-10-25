@@ -2,8 +2,7 @@ package delayqueue
 
 import (
 	"context"
-
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // BucketItem bucket中的元素
@@ -14,7 +13,7 @@ type BucketItem struct {
 
 // 添加JobId到bucket中
 func (q *DelayRedisQueue) pushToBucket(ctx context.Context, key string, timestamp int64, jobId string) error {
-	err := q.client.ZAdd(ctx, key, &redis.Z{
+	err := q.client.ZAdd(ctx, key, redis.Z{
 		Score:  float64(timestamp),
 		Member: jobId,
 	}).Err()
