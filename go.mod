@@ -1,4 +1,4 @@
-module github.com/go-online-public/delay-queue
+module github.com/bytefly/delay-queue
 
 go 1.16
 

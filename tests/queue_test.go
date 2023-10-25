@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	delayqueue "github.com/go-online-public/delay-queue"
+	delayqueue "github.com/bytefly/delay-queue"
 	"github.com/go-redis/redis/v8"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
